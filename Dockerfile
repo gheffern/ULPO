@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y \
     file \
     xz-utils \
     llvm \
+    autoconf \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Zig compiler (0.16.0 stable)
@@ -34,10 +35,12 @@ RUN mkdir -p /src /build /stage
 
 ARG MIMALLOC_VERSION=v3.3.2
 ARG ZLIB_NG_VERSION=2.2.4
+ARG JEMALLOC_VERSION=5.3.1
 
-# Clone targets for mimalloc and zlib-ng
+# Clone targets for mimalloc, zlib-ng, and jemalloc
 RUN git clone --depth 1 -b ${MIMALLOC_VERSION} https://github.com/microsoft/mimalloc.git /src/mimalloc
 RUN git clone --depth 1 -b ${ZLIB_NG_VERSION} https://github.com/zlib-ng/zlib-ng.git /src/zlib-ng
+RUN git clone --depth 1 -b ${JEMALLOC_VERSION} https://github.com/jemalloc/jemalloc.git /src/jemalloc
 
 # Copy build and quality-gate verification scripts
 COPY verify.sh /build/verify.sh

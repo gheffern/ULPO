@@ -1,7 +1,7 @@
 # Universal Linux Performance Optimizer (ULPO)
 
 ULPO builds a single, multi-architecture (`linux/amd64`, `linux/arm64`) scratch-based OCI container image containing pre-compiled, optimized, and statically-isolated shared objects (`.so`) for:
-*   **Memory Allocators**: `mimalloc` (optimized for speed, concurrency, and fragmentation).
+*   **Memory Allocators**: `mimalloc` (optimized for speed, concurrency, and fragmentation) and `jemalloc` (emphasizing fragmentation avoidance and scalability).
 *   **Compression Libraries**: `zlib-ng` (highly optimized zlib replacement utilizing SSE/AVX/PCLMULQDQ on x86 and NEON on Arm).
 
 By using the native Kubernetes OCI Image Volumes feature (K8s 1.30+), you can mount this scratch image directly into your application pods and load these high-performance libraries via `LD_PRELOAD` without injecting files into your application's base image.
@@ -15,19 +15,20 @@ Inside the final scratch image, the compiled shared libraries are organized by *
 ```text
 /
 ├── allocators/
+│   ├── jemalloc/
+│   │   ├── glibc-2.28/
+│   │   │   ├── amd64/libjemalloc.so.2
+│   │   │   └── arm64/libjemalloc.so.2
+│   │   ├── glibc-2.34/ ...
+│   │   ├── glibc-2.39/ ...
+│   │   └── musl/ ...
 │   └── mimalloc/
 │       ├── glibc-2.28/
 │       │   ├── amd64/libmimalloc.so
 │       │   └── arm64/libmimalloc.so
-│       ├── glibc-2.34/
-│       │   ├── amd64/libmimalloc.so
-│       │   └── arm64/libmimalloc.so
-│       ├── glibc-2.39/
-│       │   ├── amd64/libmimalloc.so
-│       │   └── arm64/libmimalloc.so
-│       └── musl/
-│           ├── amd64/libmimalloc.so
-│           └── arm64/libmimalloc.so
+│       ├── glibc-2.34/ ...
+│       ├── glibc-2.39/ ...
+│       └── musl/ ...
 ├── compression/
 │   └── zlib-ng/
 │       ├── glibc-2.28/
@@ -141,13 +142,23 @@ if [ -n "$ARCH" ]; then
     fi
   fi
 
-  # 3. Export LD_PRELOAD paths (enable either or both)
+  # 3. Export LD_PRELOAD paths
+  # Allocator choices: mimalloc or jemalloc (do not preload both allocators simultaneously)
   ULPO_MIMALLOC="/ulpo/allocators/mimalloc/${LIBC}/${ARCH}/libmimalloc.so"
+  ULPO_JEMALLOC="/ulpo/allocators/jemalloc/${LIBC}/${ARCH}/libjemalloc.so.2"
   ULPO_ZLIB="/ulpo/compression/zlib-ng/${LIBC}/${ARCH}/libz.so.1"
+
+  # Select which allocator to enable (mimalloc preferred here as an example)
+  ALLOCATOR_PRELOAD=""
+  if [ -f "$ULPO_MIMALLOC" ]; then
+    ALLOCATOR_PRELOAD="$ULPO_MIMALLOC"
+  elif [ -f "$ULPO_JEMALLOC" ]; then
+    ALLOCATOR_PRELOAD="$ULPO_JEMALLOC"
+  fi
 
   # Validate availability and set preload
   PRELOADS=""
-  [ -f "$ULPO_MIMALLOC" ] && PRELOADS="$ULPO_MIMALLOC"
+  [ -n "$ALLOCATOR_PRELOAD" ] && PRELOADS="$ALLOCATOR_PRELOAD"
   if [ -f "$ULPO_ZLIB" ]; then
     [ -n "$PRELOADS" ] && PRELOADS="${PRELOADS}:${ULPO_ZLIB}" || PRELOADS="$ULPO_ZLIB"
   fi
@@ -173,6 +184,7 @@ To build the multi-platform OCI image and push it to your registry:
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
   --build-arg MIMALLOC_VERSION=v3.3.2 \
+  --build-arg JEMALLOC_VERSION=5.3.1 \
   --build-arg ZLIB_NG_VERSION=2.2.4 \
   -t registry.example.com/ulpo:latest \
   --push .

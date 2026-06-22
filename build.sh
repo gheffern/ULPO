@@ -90,7 +90,32 @@ for entry in "${TARGETS[@]}"; do
     cp "$zlib_ng_file" "$STAGE_DIR/compression/zlib-ng/$LIBC/$ARCH/libz.so.1"
     llvm-strip "$STAGE_DIR/compression/zlib-ng/$LIBC/$ARCH/libz.so.1"
 
-    # 3. Verify this target's binaries
+    # 3. Compile jemalloc
+    echo "--> Compiling jemalloc..."
+    rm -rf "$BUILD_ROOT/jemalloc"
+    mkdir -p "$BUILD_ROOT/jemalloc"
+    cp -r "$SRC_DIR/jemalloc/." "$BUILD_ROOT/jemalloc/"
+    (
+        cd "$BUILD_ROOT/jemalloc"
+        CONFIGURE_HOST="${ZIG_TARGET%%.*}"
+        ./autogen.sh \
+            --host="$CONFIGURE_HOST" \
+            --with-jemalloc-prefix="" \
+            --enable-prof \
+            --enable-stats \
+            --disable-initial-exec-tls \
+            AR="/usr/local/bin/zig-ar" \
+            RANLIB="/usr/local/bin/zig-ranlib" \
+            LDFLAGS="-static-libgcc"
+        make -j$(nproc)
+    )
+    mkdir -p "$STAGE_DIR/allocators/jemalloc/$LIBC/$ARCH"
+    mkdir -p "$STAGE_DIR/debug/allocators/jemalloc/$LIBC/$ARCH"
+    cp "$BUILD_ROOT/jemalloc/lib/libjemalloc.so.2" "$STAGE_DIR/debug/allocators/jemalloc/$LIBC/$ARCH/libjemalloc.so.2"
+    cp "$BUILD_ROOT/jemalloc/lib/libjemalloc.so.2" "$STAGE_DIR/allocators/jemalloc/$LIBC/$ARCH/libjemalloc.so.2"
+    llvm-strip "$STAGE_DIR/allocators/jemalloc/$LIBC/$ARCH/libjemalloc.so.2"
+
+    # 4. Verify this target's binaries
     echo "--> Verifying compiled binaries..."
     /build/verify.sh "$STAGE_DIR" "$LIBC" "$ARCH"
 
