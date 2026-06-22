@@ -176,9 +176,10 @@ fi
 
 ### Local / CI Image Build
 
-The build utilizes **Zig** as a unified cross-compiler matrix inside a multi-stage Docker build, outputting a zero-dependency `/stage` which is copied into a clean `scratch` image.
+The build utilizes **Zig** as a unified cross-compiler matrix inside a multi-stage Docker build, generating two final targets (`release` and `debug`).
 
-To build the multi-platform OCI image and push it to your registry:
+#### 1. Build the Standard Release Image (Default, ~13 MB)
+This target contains only optimized, stripped production libraries (`/allocators` and `/compression`) and builds by default:
 
 ```bash
 docker buildx build \
@@ -187,6 +188,20 @@ docker buildx build \
   --build-arg JEMALLOC_VERSION=5.3.1 \
   --build-arg ZLIB_NG_VERSION=2.2.4 \
   -t registry.example.com/ulpo:latest \
+  --push .
+```
+
+#### 2. Build the Debug Image (Includes Debug Symbols, ~116 MB)
+This target packages the unstripped libraries under `/debug/` containing full debug symbols, useful for backtracing and core dump analysis:
+
+```bash
+docker buildx build \
+  --target debug \
+  --platform linux/amd64,linux/arm64 \
+  --build-arg MIMALLOC_VERSION=v3.3.2 \
+  --build-arg JEMALLOC_VERSION=5.3.1 \
+  --build-arg ZLIB_NG_VERSION=2.2.4 \
+  -t registry.example.com/ulpo:debug \
   --push .
 ```
 

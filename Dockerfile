@@ -51,7 +51,14 @@ RUN /build/build.sh /stage
 
 
 # =====================================================================
-# STAGE 2: FINAL ARTIFACT ASSEMBLY (SCRATCH)
+# STAGE 2a: DEBUG ARTIFACT ASSEMBLY
 # =====================================================================
-FROM scratch AS final
+FROM scratch AS debug
 COPY --from=builder /stage/ /
+
+# =====================================================================
+# STAGE 2b: RELEASE ARTIFACT ASSEMBLY (DEFAULT)
+# =====================================================================
+FROM scratch AS release
+COPY --from=builder /stage/allocators /allocators
+COPY --from=builder /stage/compression /compression
