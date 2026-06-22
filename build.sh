@@ -54,6 +54,7 @@ for entry in "${TARGETS[@]}"; do
               -DCMAKE_SYSTEM_PROCESSOR="$CMAKE_SYSTEM_PROCESSOR" \
               -DCMAKE_AR="/usr/local/bin/zig-ar" \
               -DCMAKE_RANLIB="/usr/local/bin/zig-ranlib" \
+              -DCMAKE_BUILD_TYPE=Release \
               -DMI_SECURE=OFF -DMI_BUILD_SHARED=ON -DMI_BUILD_OBJECT=OFF \
               -DMI_OPT_ARCH=OFF -DMI_NO_OPT_ARCH=ON \
               -DCMAKE_SHARED_LINKER_FLAGS="-static-libgcc -static-libstdc++" ..
