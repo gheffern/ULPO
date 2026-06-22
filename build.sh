@@ -105,7 +105,7 @@ for entry in "${TARGETS[@]}"; do
         if [[ "$LIBC" == glibc* ]]; then
             EXTRA_CONFIG_ARGS+=("je_cv_strerror_r_returns_char_with_gnu_source=yes")
         else
-            EXTRA_CONFIG_ARGS+=("je_cv_strerror_r_returns_char_with_gnu_source=no" "je_cv_strerror_r_header_only=yes")
+            EXTRA_CONFIG_ARGS+=("je_cv_strerror_r_returns_char_with_gnu_source=no" "je_cv_strerror_r_header_pass=yes")
         fi
 
         ./autogen.sh \
