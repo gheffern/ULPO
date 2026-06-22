@@ -114,10 +114,11 @@ for entry in "${TARGETS[@]}"; do
             --with-jemalloc-prefix="" \
             --enable-prof \
             --enable-stats \
-            --disable-initial-exec-tls \
             AR="/usr/local/bin/zig-ar" \
             RANLIB="/usr/local/bin/zig-ranlib" \
             LDFLAGS="-static-libgcc" \
+            CFLAGS="-O3" \
+            CXXFLAGS="-O3" \
             "${EXTRA_CONFIG_ARGS[@]}"
         make -j$(nproc)
     )
