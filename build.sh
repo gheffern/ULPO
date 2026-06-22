@@ -98,6 +98,16 @@ for entry in "${TARGETS[@]}"; do
     (
         cd "$BUILD_ROOT/jemalloc"
         CONFIGURE_HOST="${ZIG_TARGET%%.*}"
+        
+        # strerror_r return type check can fail when cross-compiling with strict compilers/flags.
+        # Bypass by explicitly passing autotools cache variables matching glibc/musl implementations.
+        EXTRA_CONFIG_ARGS=()
+        if [[ "$LIBC" == glibc* ]]; then
+            EXTRA_CONFIG_ARGS+=("je_cv_strerror_r_returns_char_with_gnu_source=yes")
+        else
+            EXTRA_CONFIG_ARGS+=("je_cv_strerror_r_returns_char_with_gnu_source=no" "je_cv_strerror_r_header_only=yes")
+        fi
+
         ./autogen.sh \
             --host="$CONFIGURE_HOST" \
             --with-jemalloc-prefix="" \
@@ -106,7 +116,8 @@ for entry in "${TARGETS[@]}"; do
             --disable-initial-exec-tls \
             AR="/usr/local/bin/zig-ar" \
             RANLIB="/usr/local/bin/zig-ranlib" \
-            LDFLAGS="-static-libgcc"
+            LDFLAGS="-static-libgcc" \
+            "${EXTRA_CONFIG_ARGS[@]}"
         make -j$(nproc)
     )
     mkdir -p "$STAGE_DIR/allocators/jemalloc/$LIBC/$ARCH"
