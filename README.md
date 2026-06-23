@@ -78,7 +78,7 @@ spec:
   volumes:
     - name: ulpo-libs
       image:
-        reference: registry.example.com/ulpo:latest
+        reference: ghcr.io/gheffern/ulpo:latest
         pullPolicy: IfNotPresent
 ```
 
@@ -169,6 +169,34 @@ if [ -n "$ARCH" ]; then
   fi
 fi
 ```
+
+---
+
+## ⚙️ Runtime Tuning
+
+You can adjust allocator behaviors at runtime via environment variables without recompiling:
+
+### 1. `jemalloc` Configuration (`MALLOC_CONF`)
+`jemalloc` reads tuning options from the `MALLOC_CONF` environment variable. Essential options include:
+*   **`background_thread:true`**: Shifts memory page purging to background helper threads to reduce tail latency spikes on your main worker threads.
+*   **`metadata_thp:auto`**: Enables Transparent Huge Pages (THP) for internal allocator metadata, reducing TLB cache misses in allocation-heavy environments.
+*   **`prof:true`**: Enables heap profiling (allows leak tracking and memory sampling).
+*   *Learn more in the official [jemalloc Tuning Manual](https://jemalloc.net/jemalloc.3.html).*
+
+**Example Pod Environment Settings**:
+```yaml
+      env:
+        - name: LD_PRELOAD
+          value: "/usr/local/lib/libjemalloc.so"
+        - name: MALLOC_CONF
+          value: "background_thread:true,metadata_thp:auto"
+```
+
+### 2. `mimalloc` Configuration
+`mimalloc` supports direct environment variables to configure and introspect memory:
+*   **`MIMALLOC_SHOW_STATS=1`**: Prints allocation statistics (allocations, page reuse, cache status) to `stderr` upon program termination.
+*   **`MIMALLOC_VERBOSE=1`**: Prints informational messages and warnings to the console during execution.
+*   *Learn more in the official [mimalloc Options Guide](https://microsoft.github.io/mimalloc/group__options.html).*
 
 ---
 
