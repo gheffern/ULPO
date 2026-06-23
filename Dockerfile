@@ -3,7 +3,7 @@
 # =====================================================================
 # STAGE 1: UNIFIED CROSS-COMPILATION BUILDER
 # =====================================================================
-FROM ubuntu:24.04 AS builder
+FROM --platform=$BUILDPLATFORM ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install core build packaging and utility dependencies
