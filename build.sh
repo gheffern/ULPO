@@ -174,7 +174,7 @@ for entry in "${TARGETS[@]}"; do
     mkdir -p "$STAGE_DIR/compression/zlib-rs/$LIBC/$ARCH"
     mkdir -p "$STAGE_DIR/debug/compression/zlib-rs/$LIBC/$ARCH"
     
-    zlib_rs_file=$(find "$BUILD_ROOT/zlib-rs/target/$RUST_TARGET/release" -name "*.so" | head -n 1)
+    zlib_rs_file=$(find "$BUILD_ROOT/zlib-rs" -name "*.so" | head -n 1)
     if [ -z "$zlib_rs_file" ]; then
         echo "FAIL: Could not find compiled zlib-rs shared library"
         exit 1
