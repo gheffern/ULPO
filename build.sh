@@ -128,7 +128,64 @@ for entry in "${TARGETS[@]}"; do
     cp "$BUILD_ROOT/jemalloc/lib/libjemalloc.so.2" "$STAGE_DIR/allocators/jemalloc/$LIBC/$ARCH/libjemalloc.so.2"
     llvm-strip "$STAGE_DIR/allocators/jemalloc/$LIBC/$ARCH/libjemalloc.so.2"
 
-    # 4. Verify this target's binaries
+    # 4. Compile zlib-rs
+    echo "--> Compiling zlib-rs..."
+    
+    # Map ZIG_TARGET to RUST_TARGET
+    if [[ "$ZIG_TARGET" == x86_64-linux-gnu* ]]; then
+        RUST_TARGET="x86_64-unknown-linux-gnu"
+    elif [[ "$ZIG_TARGET" == x86_64-linux-musl* ]]; then
+        RUST_TARGET="x86_64-unknown-linux-musl"
+    elif [[ "$ZIG_TARGET" == aarch64-linux-gnu* ]]; then
+        RUST_TARGET="aarch64-unknown-linux-gnu"
+    elif [[ "$ZIG_TARGET" == aarch64-linux-musl* ]]; then
+        RUST_TARGET="aarch64-unknown-linux-musl"
+    else
+        echo "FAIL: Unknown target for Rust compilation: $ZIG_TARGET"
+        exit 1
+    fi
+
+    # Create temporary linker wrapper for cargo to use zig cc
+    LINKER_WRAPPER="/tmp/zig-linker-${ZIG_TARGET}"
+    printf '#!/bin/sh\nexec zig cc -target %s "$@"\n' "$ZIG_TARGET" > "$LINKER_WRAPPER"
+    chmod +x "$LINKER_WRAPPER"
+    
+    # Set target linker environment variable
+    RUST_TARGET_UPPER=$(echo "$RUST_TARGET" | tr 'a-z-' 'A-Z_' | tr '.' '_')
+    export "CARGO_TARGET_${RUST_TARGET_UPPER}_LINKER"="$LINKER_WRAPPER"
+    
+    # Force SONAME and static linking of libgcc in the ELF headers
+    export RUSTFLAGS="-Clink-arg=-Wl,-soname,libz.so.1 -Clink-arg=-static-libgcc"
+
+    # Clean and build zlib-rs cdylib
+    rm -rf "$BUILD_ROOT/zlib-rs"
+    mkdir -p "$BUILD_ROOT/zlib-rs"
+    cp -r "$SRC_DIR/zlib-rs/." "$BUILD_ROOT/zlib-rs/"
+    (
+        cd "$BUILD_ROOT/zlib-rs/libz-rs-sys-cdylib"
+        # We disable default features (which use rust-allocator) and enable c-allocator + gz support
+        cargo build \
+            --target "$RUST_TARGET" \
+            --release \
+            --no-default-features \
+            --features="c-allocator,gz"
+    )
+    
+    mkdir -p "$STAGE_DIR/compression/zlib-rs/$LIBC/$ARCH"
+    mkdir -p "$STAGE_DIR/debug/compression/zlib-rs/$LIBC/$ARCH"
+    
+    zlib_rs_file=$(find "$BUILD_ROOT/zlib-rs/target/$RUST_TARGET/release" -name "*.so" | head -n 1)
+    if [ -z "$zlib_rs_file" ]; then
+        echo "FAIL: Could not find compiled zlib-rs shared library"
+        exit 1
+    fi
+    
+    # Stage the library files
+    cp "$zlib_rs_file" "$STAGE_DIR/debug/compression/zlib-rs/$LIBC/$ARCH/libz.so.1"
+    cp "$zlib_rs_file" "$STAGE_DIR/compression/zlib-rs/$LIBC/$ARCH/libz.so.1"
+    llvm-strip "$STAGE_DIR/compression/zlib-rs/$LIBC/$ARCH/libz.so.1"
+
+    # 5. Verify this target's binaries
     echo "--> Verifying compiled binaries..."
     /build/verify.sh "$STAGE_DIR" "$LIBC" "$ARCH"
 
