@@ -4,8 +4,12 @@ on:
   push:
     branches:
       - main
+      - feature/zlib-rs
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build-and-push:
