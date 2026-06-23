@@ -3,7 +3,7 @@
 # =====================================================================
 # STAGE 1: UNIFIED CROSS-COMPILATION BUILDER
 # =====================================================================
-FROM ubuntu:24.04 AS builder
+FROM --platform=$BUILDPLATFORM ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install core build packaging and utility dependencies
@@ -25,6 +25,14 @@ RUN ZIG_ARCH=$(uname -m) && \
     ln -s /usr/local/zig-${ZIG_ARCH}-linux-0.16.0/zig /usr/local/bin/zig && \
     rm /tmp/zig.tar.xz
 
+# Install Rust toolchain (rustup) and configure cross-compilation targets
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN rustup target add x86_64-unknown-linux-gnu && \
+    rustup target add x86_64-unknown-linux-musl && \
+    rustup target add aarch64-unknown-linux-gnu && \
+    rustup target add aarch64-unknown-linux-musl
+
 # Create zig-ar and zig-ranlib wrappers to bypass CMake picking up host llvm-ar
 RUN echo '#!/bin/sh\nexec /usr/local/bin/zig ar "$@"' > /usr/local/bin/zig-ar && \
     echo '#!/bin/sh\nexec /usr/local/bin/zig ranlib "$@"' > /usr/local/bin/zig-ranlib && \
@@ -39,11 +47,14 @@ ARG MIMALLOC_VERSION=v3.3.2
 ARG ZLIB_NG_VERSION=2.2.4
 # renovate: datasource=github-tags depName=jemalloc/jemalloc
 ARG JEMALLOC_VERSION=5.3.1
+# renovate: datasource=github-tags depName=trifectatechfoundation/zlib-rs
+ARG ZLIB_RS_VERSION=v0.6.3
 
-# Clone targets for mimalloc, zlib-ng, and jemalloc
+# Clone targets for mimalloc, zlib-ng, jemalloc, and zlib-rs
 RUN git clone --depth 1 -b ${MIMALLOC_VERSION} https://github.com/microsoft/mimalloc.git /src/mimalloc
 RUN git clone --depth 1 -b ${ZLIB_NG_VERSION} https://github.com/zlib-ng/zlib-ng.git /src/zlib-ng
 RUN git clone --depth 1 -b ${JEMALLOC_VERSION} https://github.com/jemalloc/jemalloc.git /src/jemalloc
+RUN git clone --depth 1 -b ${ZLIB_RS_VERSION} https://github.com/trifectatechfoundation/zlib-rs.git /src/zlib-rs
 
 # Copy build and quality-gate verification scripts
 COPY verify.sh /build/verify.sh
