@@ -71,6 +71,7 @@ You can run the build script directly on your host machine to compile specific t
     git clone --depth 1 -b v3.3.2 https://github.com/microsoft/mimalloc.git /tmp/src/mimalloc
     git clone --depth 1 -b 2.2.4 https://github.com/zlib-ng/zlib-ng.git /tmp/src/zlib-ng
     git clone --depth 1 -b 5.3.1 https://github.com/jemalloc/jemalloc.git /tmp/src/jemalloc
+    git clone --depth 1 -b v0.6.3 https://github.com/trifectatechfoundation/zlib-rs.git /tmp/src/zlib-rs
     ```
 2.  **Execute the build script** by redirecting output paths:
     ```bash

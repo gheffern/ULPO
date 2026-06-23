@@ -2,7 +2,7 @@
 
 ULPO builds a single, multi-architecture (`linux/amd64`, `linux/arm64`) scratch-based OCI container image containing pre-compiled, optimized, and statically-isolated shared objects (`.so`) for:
 *   **Memory Allocators**: `mimalloc` (optimized for speed, concurrency, and fragmentation) and `jemalloc` (emphasizing fragmentation avoidance and scalability).
-*   **Compression Libraries**: `zlib-ng` (highly optimized zlib replacement utilizing SSE/AVX/PCLMULQDQ on x86 and NEON on Arm).
+*   **Compression Libraries**: `zlib-ng` (highly optimized C-based zlib replacement using SIMD vector instructions) and `zlib-rs` (safe, high-performance Rust rewrite of zlib).
 
 By using the native Kubernetes OCI Image Volumes feature (K8s 1.30+), you can mount this scratch image directly into your application pods and load these high-performance libraries via `LD_PRELOAD` without injecting files into your application's base image.
 
@@ -30,7 +30,14 @@ Inside the final scratch image, the compiled shared libraries are organized by *
 │       ├── glibc-2.39/ ...
 │       └── musl/ ...
 ├── compression/
-│   └── zlib-ng/
+│   ├── zlib-ng/
+│   │   ├── glibc-2.28/
+│   │   │   ├── amd64/libz.so.1
+│   │   │   └── arm64/libz.so.1
+│   │   ├── glibc-2.34/ ...
+│   │   ├── glibc-2.39/ ...
+│   │   └── musl/ ...
+│   └── zlib-rs/
 │       ├── glibc-2.28/
 │       │   ├── amd64/libz.so.1
 │       │   └── arm64/libz.so.1
@@ -144,9 +151,11 @@ if [ -n "$ARCH" ]; then
 
   # 3. Export LD_PRELOAD paths
   # Allocator choices: mimalloc or jemalloc (do not preload both allocators simultaneously)
+  # Compression choices: zlib-ng or zlib-rs (do not preload both compression libs simultaneously)
   ULPO_MIMALLOC="/ulpo/allocators/mimalloc/${LIBC}/${ARCH}/libmimalloc.so"
   ULPO_JEMALLOC="/ulpo/allocators/jemalloc/${LIBC}/${ARCH}/libjemalloc.so.2"
-  ULPO_ZLIB="/ulpo/compression/zlib-ng/${LIBC}/${ARCH}/libz.so.1"
+  ULPO_ZLIB_NG="/ulpo/compression/zlib-ng/${LIBC}/${ARCH}/libz.so.1"
+  ULPO_ZLIB_RS="/ulpo/compression/zlib-rs/${LIBC}/${ARCH}/libz.so.1"
 
   # Select which allocator to enable (mimalloc preferred here as an example)
   ALLOCATOR_PRELOAD=""
@@ -156,11 +165,19 @@ if [ -n "$ARCH" ]; then
     ALLOCATOR_PRELOAD="$ULPO_JEMALLOC"
   fi
 
+  # Select which compression library to enable (zlib-rs preferred here as an example)
+  COMPRESSION_PRELOAD=""
+  if [ -f "$ULPO_ZLIB_RS" ]; then
+    COMPRESSION_PRELOAD="$ULPO_ZLIB_RS"
+  elif [ -f "$ULPO_ZLIB_NG" ]; then
+    COMPRESSION_PRELOAD="$ULPO_ZLIB_NG"
+  fi
+
   # Validate availability and set preload
   PRELOADS=""
   [ -n "$ALLOCATOR_PRELOAD" ] && PRELOADS="$ALLOCATOR_PRELOAD"
-  if [ -f "$ULPO_ZLIB" ]; then
-    [ -n "$PRELOADS" ] && PRELOADS="${PRELOADS}:${ULPO_ZLIB}" || PRELOADS="$ULPO_ZLIB"
+  if [ -n "$COMPRESSION_PRELOAD" ]; then
+    [ -n "$PRELOADS" ] && PRELOADS="${PRELOADS}:${COMPRESSION_PRELOAD}" || PRELOADS="$COMPRESSION_PRELOAD"
   fi
 
   if [ -n "$PRELOADS" ]; then

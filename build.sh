@@ -154,8 +154,13 @@ for entry in "${TARGETS[@]}"; do
     RUST_TARGET_UPPER=$(echo "$RUST_TARGET" | tr 'a-z-' 'A-Z_' | tr '.' '_')
     export "CARGO_TARGET_${RUST_TARGET_UPPER}_LINKER"="$LINKER_WRAPPER"
     
-    # Force SONAME and static linking of libgcc in the ELF headers
-    export RUSTFLAGS="-Clink-arg=-Wl,-soname,libz.so.1 -Clink-arg=-static-libgcc"
+    # Force SONAME and static linking of libgcc in the ELF headers.
+    # For musl targets, we must disable crt-static to allow building dynamic libraries (cdylib).
+    if [[ "$RUST_TARGET" == *musl ]]; then
+        export RUSTFLAGS="-Clink-arg=-Wl,-soname,libz.so.1 -Clink-arg=-static-libgcc -Ctarget-feature=-crt-static"
+    else
+        export RUSTFLAGS="-Clink-arg=-Wl,-soname,libz.so.1 -Clink-arg=-static-libgcc"
+    fi
 
     # Clean and build zlib-rs cdylib
     rm -rf "$BUILD_ROOT/zlib-rs"
