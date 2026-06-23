@@ -33,8 +33,11 @@ RUN echo '#!/bin/sh\nexec /usr/local/bin/zig ar "$@"' > /usr/local/bin/zig-ar &&
 # Set up source and staging directories
 RUN mkdir -p /src /build /stage
 
+# renovate: datasource=github-tags depName=microsoft/mimalloc
 ARG MIMALLOC_VERSION=v3.3.2
+# renovate: datasource=github-tags depName=zlib-ng/zlib-ng
 ARG ZLIB_NG_VERSION=2.2.4
+# renovate: datasource=github-tags depName=jemalloc/jemalloc
 ARG JEMALLOC_VERSION=5.3.1
 
 # Clone targets for mimalloc, zlib-ng, and jemalloc
