@@ -174,46 +174,7 @@ fi
 
 ## 🛠️ Building and Development
 
-### Local / CI Image Build
-
-The build utilizes **Zig** as a unified cross-compiler matrix inside a multi-stage Docker build, generating two final targets (`release` and `debug`).
-
-#### 1. Build the Standard Release Image (Default, ~13 MB)
-This target contains only optimized, stripped production libraries (`/allocators` and `/compression`) and builds by default:
-
-```bash
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  --build-arg MIMALLOC_VERSION=v3.3.2 \
-  --build-arg JEMALLOC_VERSION=5.3.1 \
-  --build-arg ZLIB_NG_VERSION=2.2.4 \
-  -t registry.example.com/ulpo:latest \
-  --push .
-```
-
-#### 2. Build the Debug Image (Includes Debug Symbols, ~116 MB)
-This target packages the unstripped libraries under `/debug/` containing full debug symbols, useful for backtracing and core dump analysis:
-
-```bash
-docker buildx build \
-  --target debug \
-  --platform linux/amd64,linux/arm64 \
-  --build-arg MIMALLOC_VERSION=v3.3.2 \
-  --build-arg JEMALLOC_VERSION=5.3.1 \
-  --build-arg ZLIB_NG_VERSION=2.2.4 \
-  -t registry.example.com/ulpo:debug \
-  --push .
-```
-
-### Quality Gates & Verification
-
-The project includes an automatic verification gate during builds:
-*   [build.sh](file:///home/gheffern/Projects/ULPO/build.sh): Orchestrates compilation of targets using Zig compiler wrappers (`zig cc`, `zig ar`).
-*   [verify.sh](file:///home/gheffern/Projects/ULPO/verify.sh): Automatically runs quality control checks against compiled binaries:
-    1.  **GLIBC version limit**: Verifies binaries do not reference symbols higher than the target version (e.g. checking glibc-2.28 target does not reference 2.29+ symbols).
-    2.  **Dependency isolation**: Ensures libraries are compiled statically with no dynamic helper libraries like `libgcc_s.so` or `libstdc++.so`.
-    3.  **Instruction Set Check**: Validates that Intel SSE/PCLMULQDQ intrinsic instructions are correctly baked into x86 builds.
-    4.  **Smoke-test loading**: Performs a dry run of loading the library with `LD_PRELOAD` using the host interpreter.
+Detailed guidelines on configuring compiler toolchains, building release and debug images, running local host-level builds, and adding custom performance libraries to the compiler matrix are available in the [CONTRIBUTING.md](file:///home/gheffern/Projects/ULPO/CONTRIBUTING.md) developer guide.
 
 ---
 
