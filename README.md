@@ -10,7 +10,10 @@ By using the native Kubernetes OCI Image Volumes feature (K8s 1.30+), you can mo
 
 ## 📂 Target Image Directory Structure
 
-Inside the final scratch image, the compiled shared libraries are organized by **Libc Variant** and **CPU Architecture** to prevent symbol and linking mismatches:
+ULPO publishes two distinct image flavors to optimize for image size and debugging requirements:
+
+### 1. Production (Release) Image (`latest` or `<version>`)
+Contains only stripped, production-ready optimized shared objects (`.so`) for minimum image footprint:
 
 ```text
 /
@@ -29,23 +32,37 @@ Inside the final scratch image, the compiled shared libraries are organized by *
 │       ├── glibc-2.34/ ...
 │       ├── glibc-2.39/ ...
 │       └── musl/ ...
-├── compression/
-│   ├── zlib-ng/
-│   │   ├── glibc-2.28/
-│   │   │   ├── amd64/libz.so.1
-│   │   │   └── arm64/libz.so.1
-│   │   ├── glibc-2.34/ ...
-│   │   ├── glibc-2.39/ ...
-│   │   └── musl/ ...
-│   └── zlib-rs/
-│       ├── glibc-2.28/
-│       │   ├── amd64/libz.so.1
-│       │   └── arm64/libz.so.1
-│       ├── glibc-2.34/ ...
-│       ├── glibc-2.39/ ...
-│       └── musl/ ...
+└── compression/
+    ├── zlib-ng/
+    │   ├── glibc-2.28/
+    │   │   ├── amd64/libz.so.1
+    │   │   └── arm64/libz.so.1
+    │   ├── glibc-2.34/ ...
+    │   ├── glibc-2.39/ ...
+    │   └── musl/ ...
+    └── zlib-rs/
+        ├── glibc-2.28/
+        │   ├── amd64/libz.so.1
+        │   └── arm64/libz.so.1
+        ├── glibc-2.34/ ...
+        ├── glibc-2.39/ ...
+        └── musl/ ...
+```
+
+### 2. Debug Image (`debug` or `<version>-debug`)
+Contains all release binaries, plus an additional `/debug/` hierarchy containing unstripped binaries with full debug symbols:
+
+```text
+/
+├── allocators/ ... (Stripped)
+├── compression/ ... (Stripped)
 └── debug/
-    └── [allocators|compression]/ ... (Contains unstripped binaries with debug symbols)
+    ├── allocators/
+    │   ├── jemalloc/ ... (Unstripped with debug symbols)
+    │   └── mimalloc/ ... (Unstripped with debug symbols)
+    └── compression/
+        ├── zlib-ng/ ... (Unstripped with debug symbols)
+        └── zlib-rs/ ... (Unstripped with debug symbols)
 ```
 
 ---

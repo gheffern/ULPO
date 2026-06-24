@@ -7,9 +7,15 @@ on:
       - feature/zlib-rs
     tags:
       - 'v*'
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
 
 jobs:
   build-and-push:
